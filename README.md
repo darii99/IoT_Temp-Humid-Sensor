@@ -88,7 +88,7 @@ The DHT11 sensor is initialised on GPIO pin 27, then the temperature and humidit
 The dht.py library contains the DHT11 driver code. It handles the sensor initialisation, data reading and checksum verification.
 The core functionalities here are:  
 
-1. The initialisation
+1. The Initialisation
 
 ```
 class DHT11:
@@ -101,7 +101,7 @@ class DHT11:
 The DHT111 sensor is initialised by setting up the pin, "_last_measure" stores the last measurement timestamp, while "_temperature" and "_humidity" are initialised with invalid values (-1).
 
 
-2. Send initialisation signal
+2. Send Initialisation Signal
 
 ```
 def _send_init_signal(self):
@@ -114,7 +114,7 @@ def _send_init_signal(self):
 This part prepares the sensor for data transmission. After the pin is set as output, a high signal is sent to the sensor for 50ms. According to the DHT11 datasheet, 50ms of high signal is required in order to start the signal which instructs the sensor to change from low-power mode to tunning mode. This enables it to receive commands and transmit the data. After the high signal, the pin is then pulled low for 18ms, which initialises the data transmission process from the sensor to the Pico. According to the datasheet, this low signal must be at least 18ms.
 
 
-3. Measuring the temperature and humidity
+3. Measuring the Temperature and Humidity
 
 ```
 def measure(self):
@@ -136,6 +136,57 @@ def measure(self):
 Here the DHT11 sensor is measuring the temperature and humidity and updating their value every 2s. See the comments in the code for more details.
 
 
+4. Capture Pulses
+
+```
+@micropython.native                                                                              # Indicates this function will be compiled to native code for efficiency
+def _capture_pulses(self):  
+    pin = self._pin                                                                              # Assigns the GPIO pin object to 'pin'
+    pin.init(Pin.IN, Pin.PULL_UP)                                                                # Initialises the pin as input with pull-up resistor
+
+    val = 1                                                                                      # Initial value high for the pin state 
+    idx = 0                                                                                      # Index variable for transitions array
+    transitions = bytearray(EXPECTED_PULSES)                                                     # Pre-allocates memory for pulse durations
+    unchanged = 0                                                                                # Counter for consecutive unchanged pin states
+    timestamp = utime.ticks_us()                                                                 # Records current time in ms
+
+    while unchanged < MAX_UNCHANGED:
+        if val != pin.value():                                                                   # Checks if current pin state differs from 'val'
+            if idx >= EXPECTED_PULSES:                                                           # Checks if more pulses than expected have been detected
+                raise InvalidPulseCount("Got more than {} pulses".format(EXPECTED_PULSES))       # Raise error if number of pulses is incorrect
+            now = utime.ticks_us()                                                               # Records current time in ms
+            transitions[idx] = now - timestamp                                                   # Calculates duration of the pulse
+            timestamp = now                                                                      # Updates timestamp to current time
+            idx += 1                                                                             # Moves to the next index in transitions array
+
+            val = 1 - val                                                                        # Toggles val between 0 and 1 to track state changes
+            unchanged = 0                                                                        # Resets unchanged counter
+        else:
+            unchanged += 1                                                                       # Increments unchanged counter if pin state is unchanged
+
+    pin.init(Pin.OUT, Pin.PULL_DOWN)                                                             # Resets pin as output with pull-down resistor
+    if idx != EXPECTED_PULSES:                                                                   # Checks if the number of detected pulses matches expected
+        raise InvalidPulseCount("Expected {} but got {} pulses".format(EXPECTED_PULSES, idx))    # Raise error if number of pulses is incorrect
+    return transitions[4:]                                                                       # Returns pulse durations starting from index 4 onwards
+```
+The purpose of this function is to capture the timing of the pulses sent by the sensor. It records the time between the signal transitions (low to high and hight to low). It returns the recorded pulse timings, and if the number of pulses is incorrect, it raises an error. See the comments in the code for more details.
+
+
+5. Converting Pulses to Buffer
+
+```
+def _convert_pulses_to_buffer(self, pulses):
+    binary = 0                                                        # Initializes a variable to store the binary representation
+
+    for idx in range(0, len(pulses), 2):                              # Iterates over pulses with a step of 2
+        binary = binary << 1 | int(pulses[idx] > HIGH_LEVEL)          # Converts pulse duration to binary
+
+    buffer = array.array("B")                                         # Creates an array of bytes to store the result
+    for shift in range(4, -1, -1):                                    # Iterates from 4 to 0 in order to shift and mask bytes
+        buffer.append(binary >> shift * 8 & 0xFF)                     # Extracts each byte and appends to buffer
+    return buffer                                                     # Returns the buffer containing the binary data
+```  
+This is a function that converts the captured pulse timings into a data buffer. The functionalities here are that the pulses are converted into a binary representation and that it splits the binary data into five bytes (for temperature, humidity and checksum). See the comments in the code for more details.
 
 
 ## **Transmitting the data/connectivity**
