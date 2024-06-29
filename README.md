@@ -41,8 +41,8 @@ When getting started with the code, libraries were created by clicking on *File*
 ## **Putting everything together**
 
 The connection of the electronics are as shown in the picture: 
-- The Pico's port 40 (VBUS) is connected through a jumper wire to the breadboard's "power rail", and out of the power rail connect another jumper wire to the sensor DHT11's VCC pin.
-- The Pico's port 39 (GND) is connected through a jumper wire to the breadboard's "ground rail", and out of the ground rail connect another jumper wire to the sensor's GND pin.
+- Pico's port 40 (VBUS) is connected through a jumper wire to the breadboard's "power rail", and out of the power rail connect another jumper wire to the sensor DHT11's VCC pin.
+- Pico's port 38 (GND) is connected through a jumper wire to the breadboard's "ground rail", and out of the ground rail connect another jumper wire to the sensor's GND pin.
 - Pico's port 32 (GP27) is connected directly to the sensor's signal pin through one single jumper wire.
 
 
@@ -57,6 +57,85 @@ The chosen platform is Windows with Thonny IDE: Windows was selected due to pers
 In terms of functionality, Thonny IDE on Windows supports coding, debugging and also uploading code to the Raspberry Pi Pico. The local setup also allows for immediate hardware interaction between the computer and the Pico.
 
 ## **The code**
+
+Core functions in the code:
+
+### **main.py**  
+This module reads the temperature and humidity data from the DHT11 sensor and prints it to the console. It also includes error handling for potential issues with the sensor data.
+
+```
+from machine import Pin  
+import utime as time  
+from dht import DHT11, InvalidPulseCount, InvalidChecksum  
+
+while True:  
+    try:  
+        time.sleep(2)  
+        pin = Pin(27, Pin.OUT, Pin.PULL_DOWN)  
+        sensor = DHT11(pin)  
+        temperature = sensor.temperature  
+        humidity = sensor.humidity  
+        print("Temperature: {}".format(temperature))  
+        print("Humidity: {}".format(humidity))  
+    except InvalidPulseCount:  
+        print("Invalid Pulse Count")  
+    except InvalidChecksum:  
+        print("Invalid Checksum")
+```
+The DHT11 sensor is initialised on GPIO pin 27, then the temperature and humidity is read every two seconds. The exceptions "InvalidPulseCount" and "InvalidChecksum" are caught and handled.        
+
+### **dht.py**  
+The dht.py library contains the DHT11 driver code. It handles the sensor initialisation, data reading and checksum verification.
+The core functionalities here are:  
+
+1. The initialisation
+
+```
+class DHT11:
+    def __init__(self, pin):
+        self._pin = pin
+        self._last_measure = utime.ticks_us()
+        self._temperature = -1
+        self._humidity = -1
+```
+The DHT111 sensor is initialised by setting up the pin, "_last_measure" stores the last measurement timestamp, while "_temperature" and "_humidity" are initialised with invalid values (-1).
+
+
+2. Send initialisation signal
+
+```
+def _send_init_signal(self):
+    self._pin.init(Pin.OUT, Pin.PULL_DOWN)            # Sets pin as output with pull-down resistor enabled
+    self._pin.value(1)                                
+    utime.sleep_ms(50)                                # Sends a high signal for 50ms to initialise the sensor, required according to datasheet
+    self._pin.value(0)
+    utime.sleep_ms(18)                                # Pulls the pin low for 18ms to signal the start of data transmission, required according to datasheet
+```
+This part prepares the sensor for data transmission. After the pin is set as output, a high signal is sent to the sensor for 50ms. According to the DHT11 datasheet, 50ms of high signal is required in order to start the signal which instructs the sensor to change from low-power mode to tunning mode. This enables it to receive commands and transmit the data. After the high signal, the pin is then pulled low for 18ms, which initialises the data transmission process from the sensor to the Pico. According to the datasheet, this low signal must be at least 18ms.
+
+
+3. Measuring the temperature and humidity
+
+```
+def measure(self):
+    current_ticks = utime.ticks_us()
+    if utime.ticks_diff(current_ticks, self._last_measure) < MIN_INTERVAL_US and (      # Ensures at least 200ms have passed since the last measurement
+        self._temperature > -1 or self._humidity > -1
+    ):
+        return
+
+    self._send_init_signal()                                                            # Sends a start signal to the sensor
+    pulses = self._capture_pulses()                                                     # Captures the data pulses from the sensor
+    buffer = self._convert_pulses_to_buffer(pulses)                                     # Converts pulses to a readable data buffer
+    self._verify_checksum(buffer)                                                       # Ensures the data integrity
+
+    self._humidity = buffer[0] + buffer[1] / 10
+    self._temperature = buffer[2] + buffer[3] / 10
+    self._last_measure = utime.ticks_us()                                               # Updates temperature and humidity values
+```  
+Here the DHT11 sensor is measuring the temperature and humidity and updating their value every 2s. See the comments in the code for more details.
+
+
 
 
 ## **Transmitting the data/connectivity**
