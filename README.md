@@ -201,7 +201,74 @@ def _verify_checksum(self, buffer):                                  # Initializ
 ```
 The purpose of this function is to ensure the data integrity by verifying the checksum. The functionalities are that the first four bytes of the buffer are being computed, then the computed checksum is being compared with the fifth byte. If they do not match, it raises an error.
 
+
 ### **website.py**
+This library sets up a web server which shows the temperature and humidity data from the DHT11 sensor. It handles WiFi connectivity and serves a simplle web page with the sensor data.
+
+- WiFi Connection  
+In this function, a WLAN interface is being initialised. Here, an attempt is being made to connect using the provided SSID and password. It waits until the device has connected to the network and returns the devide's IP address.
+```
+def connect():
+    # Connect to WLAN
+    wlan = network.WLAN(network.STA_IF)                          # Create a WLAN station interface
+    wlan.active(True)                                            # Activate the interface
+    wlan.connect(ssid, password)                                 # Connect to the WiFi network with given SSID and password
+    while not wlan.isconnected():                                # Wait until the connection is established
+        print('Waiting for connection...')
+        sleep(1)                                                 # Sleep for 1s before checking again
+    print(wlan.ifconfig())                                       # Print the network configuration
+    return wlan.ifconfig()[0]                                    # Return the IP address
+```  
+
+- Open socket
+In this function, a server address and port are being defined. A socket object is created, and the socket is bound to the specified address and port. It then starts listening for incoming HTTP connections.
+```
+def open_socket(ip):
+    # Open a socket
+    address = (ip, 80)                                # Define the server address and port
+    connection = socket.socket()                      # Create a socket object
+    connection.bind(address)                          # Bind the socket to the address
+    connection.listen(1)                              # Enable the server to accept connections (up to 1 connection)
+    print(connection)                                 # Print the connection object
+    return connection                                 # Return the socket connection
+```
+- Generating the Webpage  
+This function generates an HTML page displaying the sensor data.
+```
+def webpage(temperature, humidity):
+    html = f"""
+            <!DOCTYPE html>
+            <html>
+            <p>Temperature is {temperature}</p>
+            <p>Humidity is {humidity}</p>
+            </body>
+            </html>
+            """
+    return html                                       # Return the HTML string
+```
+
+- Serving the Webpage  
+This function handles the incoming HTTP requests and serves the sensor data
+```
+def serve(connection):
+    while True:
+        client = connection.accept()[0]                    # Accept a client connection
+        request = client.recv(1024)                        # Receive the HTTP request from the client
+        request = str(request)                             # Convert the request to a string
+        print(request)                                     # Print the request for debugging
+
+        try:
+            temp, humid = getTempAndHumid()                # Get the temperature and humidity values
+            html = webpage(temp, humid)                    # Generate the HTML page
+        except InvalidPulseCount:
+            html = webpage(0, 0)                           # Serve default values if there's an error
+        except InvalidChecksum:
+            html = webpage(0, 0)                           # Serve default values if there's an error
+
+        client.send(html)                                  # Send the HTML page to the client
+        client.close()                                     # Close the client connection
+```
+
 
 
 ## **Transmitting the data/connectivity**
