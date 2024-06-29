@@ -88,7 +88,7 @@ The DHT11 sensor is initialised on GPIO pin 27, then the temperature and humidit
 The dht.py library contains the DHT11 driver code. It handles the sensor initialisation, data reading and checksum verification.
 The core functionalities here are:  
 
-1. The Initialisation
+- The Initialisation
 
 ```
 class DHT11:
@@ -101,7 +101,7 @@ class DHT11:
 The DHT111 sensor is initialised by setting up the pin, "_last_measure" stores the last measurement timestamp, while "_temperature" and "_humidity" are initialised with invalid values (-1).
 
 
-2. Send Initialisation Signal
+- Send Initialisation Signal
 
 ```
 def _send_init_signal(self):
@@ -114,7 +114,7 @@ def _send_init_signal(self):
 This part prepares the sensor for data transmission. After the pin is set as output, a high signal is sent to the sensor for 50ms. According to the DHT11 datasheet, 50ms of high signal is required in order to start the signal which instructs the sensor to change from low-power mode to tunning mode. This enables it to receive commands and transmit the data. After the high signal, the pin is then pulled low for 18ms, which initialises the data transmission process from the sensor to the Pico. According to the datasheet, this low signal must be at least 18ms.
 
 
-3. Measuring the Temperature and Humidity
+- Measuring the Temperature and Humidity
 
 ```
 def measure(self):
@@ -136,7 +136,7 @@ def measure(self):
 Here the DHT11 sensor is measuring the temperature and humidity and updating their value every 2s. See the comments in the code for more details.
 
 
-4. Capture Pulses
+- Capture Pulses
 
 ```
 @micropython.native                                                                              # Indicates this function will be compiled to native code for efficiency
@@ -172,7 +172,7 @@ def _capture_pulses(self):
 The purpose of this function is to capture the timing of the pulses sent by the sensor. It records the time between the signal transitions (low to high and hight to low). It returns the recorded pulse timings, and if the number of pulses is incorrect, it raises an error. See the comments in the code for more details.
 
 
-5. Converting Pulses to Buffer
+- Converting Pulses to Buffer
 
 ```
 def _convert_pulses_to_buffer(self, pulses):
@@ -187,6 +187,21 @@ def _convert_pulses_to_buffer(self, pulses):
     return buffer                                                     # Returns the buffer containing the binary data
 ```  
 This is a function that converts the captured pulse timings into a data buffer. The functionalities here are that the pulses are converted into a binary representation and that it splits the binary data into five bytes (for temperature, humidity and checksum). See the comments in the code for more details.
+
+
+- Verifying Checksum
+
+```
+def _verify_checksum(self, buffer):                                  # Initializes a variable to store the checksum calculation
+    checksum = 0                                                     
+    for buf in buffer[0:4]:                                          # Iterates over the first four bytes of the buffer
+        checksum += buf                                              # Adds each byte to the checksum
+    if checksum & 0xFF != buffer[4]:                                 # Checks if the lower 8 bits of the checksum match the fifth byte
+        raise InvalidChecksum()                                      # Raises an exception if the checksum is invalid
+```
+The purpose of this function is to ensure the data integrity by verifying the checksum. The functionalities are that the first four bytes of the buffer are being computed, then the computed checksum is being compared with the fifth byte. If they do not match, it raises an error.
+
+### **website.py**
 
 
 ## **Transmitting the data/connectivity**
