@@ -110,8 +110,15 @@ Moreover, the library includes a website functionality which generates the HTML 
 The DHT11 sensor is initialised on GPIO pin 27, then the temperature and humidity is read every two seconds. The exceptions "InvalidPulseCount" and "InvalidChecksum" are caught and handled.        
 
 ### **dht.py**  
-The dht.py library contains the DHT11 driver code. It handles the sensor initialisation, data reading and checksum verification.
-The core functionalities here are:  
+The dht.py library contains the DHT11 driver code. It handles the sensor initialisation, data reading and checksum verification. It reads temperature and humidity from the DHT11 using pulse counting and data conversion.
+
+
+The core functionalities here are:
+1. Initialisation (sets up the sensor)
+2. Measurement (gathers data if enough time has passed)
+3. Pulse capture (reads pulse transitions from the sensor)
+4. Data conversion (converts pulses into temperature and humidity bytes)
+5. Checksum validation (ensures valid data using a checksum)
 
 - The Initialisation
 
