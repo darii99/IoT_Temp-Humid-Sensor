@@ -107,6 +107,23 @@ def serve(connection):
 ```
 Moreover, the library includes a website functionality which generates the HTML page and uses JavaScript to change colors based on the values. The HTML template dynamically adjusts the text color to red or green depending on the temperature (≥25°C) or humidity (≥60%).
 
+Here is a code snippet of the HTML body:
+```
+<!DOCTYPE html>
+                    <html>
+                    <body id="block" onload="setTempColor(), setHumidColor()">
+                        <h1 id="heading">Fluffis Comfy Keeper</h1>
+                        <div style="clear: both">
+                            <h2 style="float: left">Temperature is: </h2>
+                            <h2 id="temp" style="float: left">TEMP_PLACEHOLDER</h2>
+                        </div>
+                        <div style="clear: both">
+                            <h2 style="float: left">Humidity is: </h2>
+                            <h2 id="humid" style="float: left">HUMID_PLACEHOLDER</h2>
+                        </div>
+                    </body>
+```
+
 The DHT11 sensor is initialised on GPIO pin 27, then the temperature and humidity is read every two seconds. The exceptions "InvalidPulseCount" and "InvalidChecksum" are caught and handled.        
 
 ### **dht.py**  
@@ -120,8 +137,12 @@ The core functionalities here are:
 4. Data conversion (converts pulses into temperature and humidity bytes)
 5. Checksum validation (ensures valid data using a checksum)
 
-- The Initialisation
 
+- Initialisation
+
+The DHT111 sensor is initialised by setting up the pin, "_last_measure" stores the last measurement timestamp, while "_temperature" and "_humidity" are initialised with invalid values (-1).
+
+Code snippet of the initialisation:
 ```
 class DHT11:
     def __init__(self, pin):
@@ -130,10 +151,11 @@ class DHT11:
         self._temperature = -1
         self._humidity = -1
 ```
-The DHT111 sensor is initialised by setting up the pin, "_last_measure" stores the last measurement timestamp, while "_temperature" and "_humidity" are initialised with invalid values (-1).
 
 
 - Send Initialisation Signal
+
+This part prepares the sensor for data transmission. After the pin is set as output, a high signal is sent to the sensor for 50ms. According to the DHT11 datasheet, 50ms of high signal is required in order to start the signal which instructs the sensor to change from low-power mode to tunning mode. This enables it to receive commands and transmit the data. After the high signal, the pin is then pulled low for 18ms, which initialises the data transmission process from the sensor to the Pico. According to the datasheet, this low signal must be at least 18ms.
 
 ```
 def _send_init_signal(self):
@@ -143,162 +165,54 @@ def _send_init_signal(self):
     self._pin.value(0)
     utime.sleep_ms(18)                                # Pulls the pin low for 18ms to signal the start of data transmission, required according to datasheet
 ```
-This part prepares the sensor for data transmission. After the pin is set as output, a high signal is sent to the sensor for 50ms. According to the DHT11 datasheet, 50ms of high signal is required in order to start the signal which instructs the sensor to change from low-power mode to tunning mode. This enables it to receive commands and transmit the data. After the high signal, the pin is then pulled low for 18ms, which initialises the data transmission process from the sensor to the Pico. According to the datasheet, this low signal must be at least 18ms.
 
 
 - Measuring the Temperature and Humidity
+  
+Here the DHT11 sensor is measuring the temperature and humidity and updating their value every 2s. 
 
 ```
 def measure(self):
-    current_ticks = utime.ticks_us()
-    if utime.ticks_diff(current_ticks, self._last_measure) < MIN_INTERVAL_US and (      # Ensures at least 200ms have passed since the last measurement
-        self._temperature > -1 or self._humidity > -1
-    ):
+    if utime.ticks_diff(utime.ticks_us(), self._last_measure) < MIN_INTERVAL_US:
         return
-
-    self._send_init_signal()                                                            # Sends a start signal to the sensor
-    pulses = self._capture_pulses()                                                     # Captures the data pulses from the sensor
-    buffer = self._convert_pulses_to_buffer(pulses)                                     # Converts pulses to a readable data buffer
-    self._verify_checksum(buffer)                                                       # Ensures the data integrity
-
-    self._humidity = buffer[0] + buffer[1] / 10
-    self._temperature = buffer[2] + buffer[3] / 10
-    self._last_measure = utime.ticks_us()                                               # Updates temperature and humidity values
+    self._send_init_signal()
+    pulses = self._capture_pulses()
+    buffer = self._convert_pulses_to_buffer(pulses)
+    self._verify_checksum(buffer)
 ```  
-Here the DHT11 sensor is measuring the temperature and humidity and updating their value every 2s. See the comments in the code for more details.
 
 
 - Capture Pulses
 
+The purpose of this function is to capture the timing of the pulses sent by the sensor. It records the time between the signal transitions (low to high and hight to low). It returns the recorded pulse timings, and if the number of pulses is incorrect, it raises an error.
 ```
-@micropython.native                                                                              # Indicates this function will be compiled to native code for efficiency
-def _capture_pulses(self):  
-    pin = self._pin                                                                              # Assigns the GPIO pin object to 'pin'
-    pin.init(Pin.IN, Pin.PULL_UP)                                                                # Initialises the pin as input with pull-up resistor
-
-    val = 1                                                                                      # Initial value high for the pin state 
-    idx = 0                                                                                      # Index variable for transitions array
-    transitions = bytearray(EXPECTED_PULSES)                                                     # Pre-allocates memory for pulse durations
-    unchanged = 0                                                                                # Counter for consecutive unchanged pin states
-    timestamp = utime.ticks_us()                                                                 # Records current time in ms
-
-    while unchanged < MAX_UNCHANGED:
-        if val != pin.value():                                                                   # Checks if current pin state differs from 'val'
-            if idx >= EXPECTED_PULSES:                                                           # Checks if more pulses than expected have been detected
-                raise InvalidPulseCount("Got more than {} pulses".format(EXPECTED_PULSES))       # Raise error if number of pulses is incorrect
-            now = utime.ticks_us()                                                               # Records current time in ms
-            transitions[idx] = now - timestamp                                                   # Calculates duration of the pulse
-            timestamp = now                                                                      # Updates timestamp to current time
-            idx += 1                                                                             # Moves to the next index in transitions array
-
-            val = 1 - val                                                                        # Toggles val between 0 and 1 to track state changes
-            unchanged = 0                                                                        # Resets unchanged counter
-        else:
-            unchanged += 1                                                                       # Increments unchanged counter if pin state is unchanged
-
-    pin.init(Pin.OUT, Pin.PULL_DOWN)                                                             # Resets pin as output with pull-down resistor
-    if idx != EXPECTED_PULSES:                                                                   # Checks if the number of detected pulses matches expected
-        raise InvalidPulseCount("Expected {} but got {} pulses".format(EXPECTED_PULSES, idx))    # Raise error if number of pulses is incorrect
-    return transitions[4:]                                                                       # Returns pulse durations starting from index 4 onwards
+def _capture_pulses(self):
+    pin = self._pin
+    transitions = bytearray(EXPECTED_PULSES)
+    # Captures transitions and timestamps
+    return transitions[4:]
 ```
-The purpose of this function is to capture the timing of the pulses sent by the sensor. It records the time between the signal transitions (low to high and hight to low). It returns the recorded pulse timings, and if the number of pulses is incorrect, it raises an error. See the comments in the code for more details.
 
 
-- Converting Pulses to Buffer
+- Data Conversion 
+
+This is a function that converts the captured pulse timings into a data buffer (temperature and humidity bytes). The functionalities here are that the pulses are converted into a binary representation and that it splits the binary data into five bytes (for temperature, humidity and checksum).
 
 ```
 def _convert_pulses_to_buffer(self, pulses):
-    binary = 0                                                        # Initializes a variable to store the binary representation
-
-    for idx in range(0, len(pulses), 2):                              # Iterates over pulses with a step of 2
-        binary = binary << 1 | int(pulses[idx] > HIGH_LEVEL)          # Converts pulse duration to binary
-
-    buffer = array.array("B")                                         # Creates an array of bytes to store the result
-    for shift in range(4, -1, -1):                                    # Iterates from 4 to 0 in order to shift and mask bytes
-        buffer.append(binary >> shift * 8 & 0xFF)                     # Extracts each byte and appends to buffer
-    return buffer                                                     # Returns the buffer containing the binary data
+    binary = sum(1 << (len(pulses)-1-idx) for idx, p in enumerate(pulses[::2]) if p > HIGH_LEVEL)
+    return array.array("B", [(binary >> (i * 8)) & 0xFF for i in range(4, -1, -1)])
 ```  
-This is a function that converts the captured pulse timings into a data buffer. The functionalities here are that the pulses are converted into a binary representation and that it splits the binary data into five bytes (for temperature, humidity and checksum). See the comments in the code for more details.
 
 
-- Verifying Checksum
+- Checksum Validation
 
-```
-def _verify_checksum(self, buffer):                                  # Initializes a variable to store the checksum calculation
-    checksum = 0                                                     
-    for buf in buffer[0:4]:                                          # Iterates over the first four bytes of the buffer
-        checksum += buf                                              # Adds each byte to the checksum
-    if checksum & 0xFF != buffer[4]:                                 # Checks if the lower 8 bits of the checksum match the fifth byte
-        raise InvalidChecksum()                                      # Raises an exception if the checksum is invalid
-```
 The purpose of this function is to ensure the data integrity by verifying the checksum. The functionalities are that the first four bytes of the buffer are being computed, then the computed checksum is being compared with the fifth byte. If they do not match, it raises an error.
 
-
-### **website.py**
-This library sets up a web server which shows the temperature and humidity data from the DHT11 sensor. It handles WiFi connectivity and serves a simplle web page with the sensor data.
-
-- WiFi Connection  
-In this function, a WLAN interface is being initialised. Here, an attempt is being made to connect using the provided SSID and password. It waits until the device has connected to the network and returns the devide's IP address.
 ```
-def connect():
-    # Connect to WLAN
-    wlan = network.WLAN(network.STA_IF)                          # Create a WLAN station interface
-    wlan.active(True)                                            # Activate the interface
-    wlan.connect(ssid, password)                                 # Connect to the WiFi network with given SSID and password
-    while not wlan.isconnected():                                # Wait until the connection is established
-        print('Waiting for connection...')
-        sleep(1)                                                 # Sleep for 1s before checking again
-    print(wlan.ifconfig())                                       # Print the network configuration
-    return wlan.ifconfig()[0]                                    # Return the IP address
-```  
-
-- Open socket
-In this function, a server address and port are being defined. A socket object is created, and the socket is bound to the specified address and port. It then starts listening for incoming HTTP connections.
-```
-def open_socket(ip):
-    # Open a socket
-    address = (ip, 80)                                # Define the server address and port
-    connection = socket.socket()                      # Create a socket object
-    connection.bind(address)                          # Bind the socket to the address
-    connection.listen(1)                              # Enable the server to accept connections (up to 1 connection)
-    print(connection)                                 # Print the connection object
-    return connection                                 # Return the socket connection
-```
-- Generating the Webpage  
-This function generates an HTML page displaying the sensor data.
-```
-def webpage(temperature, humidity):
-    html = f"""
-            <!DOCTYPE html>
-            <html>
-            <p>Temperature is {temperature}</p>
-            <p>Humidity is {humidity}</p>
-            </body>
-            </html>
-            """
-    return html                                       # Return the HTML string
-```
-
-- Serving the Webpage  
-This function handles the incoming HTTP requests and serves the sensor data
-```
-def serve(connection):
-    while True:
-        client = connection.accept()[0]                    # Accept a client connection
-        request = client.recv(1024)                        # Receive the HTTP request from the client
-        request = str(request)                             # Convert the request to a string
-        print(request)                                     # Print the request for debugging
-
-        try:
-            temp, humid = getTempAndHumid()                # Get the temperature and humidity values
-            html = webpage(temp, humid)                    # Generate the HTML page
-        except InvalidPulseCount:
-            html = webpage(0, 0)                           # Serve default values if there's an error
-        except InvalidChecksum:
-            html = webpage(0, 0)                           # Serve default values if there's an error
-
-        client.send(html)                                  # Send the HTML page to the client
-        client.close()                                     # Close the client connection
+def _verify_checksum(self, buffer):
+    if sum(buffer[0:4]) & 0xFF != buffer[4]:
+        raise InvalidChecksum()
 ```
 
 
