@@ -26,8 +26,7 @@ The materials that were used in this project are:
 | Solderless Breadboard 840 tie-points                  | A reusable breadbord used for making temporary electrical connections without requiring soldering. Has 840 contact points.| ![image](https://github.com/darii99/IoT_Temp-Humid-Sensor/assets/85901578/71c7084e-f105-4083-a11d-133e4f550344) |
 | 5 Jumper wires, Male-to-Male                          | Electrical wires with connector pins at each end (male), used to connect two points in a circuit.    |![image](https://github.com/darii99/IoT_Temp-Humid-Sensor/assets/85901578/f1e15408-91c2-446b-a80e-50240ce85694) |
 | USB-cable connection type A to micro-USB              | USB-cable type A to micro-USB used to connect the MCU to the computer, making it possible to program it.   | ![image](https://github.com/darii99/IoT_Temp-Humid-Sensor/assets/85901578/740fd029-0f84-40cd-8125-90abec621afb) |
-| Green LED 5mm 80mcd                                   | A green LED which turns on when the Pico is running.s |    ![Skärmavbild 2024-07-17 kl  09 47 29](https://github.com/user-attachments/assets/421d69f5-e88e-49a2-af51-3bd31a509133)  |
-            
+
 
 All these parts were included in the Start Kit at <https://www.electrokit.com/lnu-starter> at a cost of 399 SEK.
 
@@ -280,6 +279,20 @@ def serve(connection):
 
 
 ## **Presenting the data**
+![image](https://github.com/user-attachments/assets/a3fa7841-3764-4d3f-96f4-721c6ef24df7)
+![image](https://github.com/user-attachments/assets/931104dd-cd43-40b9-bc3b-15d1f86b0b2f)
+![image](https://github.com/user-attachments/assets/9d2a7a82-93c3-4239-bfd8-cab1a4f52e49)
+
 
 
 ## **Finalizing the design**
+![thumbnail_20240819_181829](https://github.com/user-attachments/assets/92bed838-2eed-449c-9edc-e1e035030dca)
+
+
+
+https://github.com/user-attachments/assets/7ccdfa5c-cbc2-41a3-b265-a1c2b3188837
+
+
+
+https://github.com/user-attachments/assets/81bbeb51-18e5-4859-8695-73398094e4e8
+
