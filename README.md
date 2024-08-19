@@ -219,8 +219,48 @@ def _verify_checksum(self, buffer):
 
 ## **Transmitting the data/connectivity**
 
+Data from the DHT11 sensor is transmitted using an HTTP server on the Raspberry Pi Pico. The server listens for incoming HTTP requests, gathers sensor data, formats it into an HTML page, and sends it back to the client (a web browser).
+
+Steps to Transmit the Data:
+Wi-Fi Connection:
+The Raspberry Pi Pico connects to the local Wi-Fi network via a router and is secured with OpenVPN through a phone, ensuring remote access with a VPN certificate.
+
+Handling Client Requests:
+A socket server listens on port 80. When the client (a web browser) sends an HTTP GET request, the Pico retrieves temperature and humidity data from the DHT11 sensor.
+
+Formatting and Sending the Data:
+The sensor data is formatted into an HTML page, including temperature and humidity readings. The background color changes based on the values (green or red). This HTML response is sent back to the client via HTTP.
+
+Protocols Used:
+
+Wireless Protocol: Wi-Fi for local network communication. OpenVPN is employed for secure remote access, allowing access to the Pico from outside the local network. 
+Transport Protocol: HTTP is used for data transmission between the Pico and the client (web browser).  
+Transmission Frequency: The data is transmitted on-demand, i.e. only when the client requests it. Each request triggers the Pico to send the latest sensor readings.
+
 
 ## **Presenting the data**
+
+- Dashboard Construction
+
+The project does not include a traditional dashboard or database for long-term data storage. Instead, it focuses on real-time data presentation.
+
+Real-Time HTML Page:
+The Pico serves a live HTML page showing the current temperature and humidity from the DHT11 sensor. JavaScript dynamically updates the page, changing background colors based on sensor readings.
+
+
+- Data Preservation and Storage  
+Database Storage:
+There is no database or long-term storage. Data is available only during the web page session and is updated with each request.
+
+
+- Data Saving Frequency:  
+No data is saved to a database; it is only displayed in real-time.
+
+
+
+
+Here are some screenshots showing example data:
+
 ![image](https://github.com/user-attachments/assets/a3fa7841-3764-4d3f-96f4-721c6ef24df7)
 ![image](https://github.com/user-attachments/assets/931104dd-cd43-40b9-bc3b-15d1f86b0b2f)
 ![image](https://github.com/user-attachments/assets/9d2a7a82-93c3-4239-bfd8-cab1a4f52e49)
@@ -228,13 +268,25 @@ def _verify_checksum(self, buffer):
 
 
 ## **Finalizing the design**
+
+- Picture of the final project
+
+
 ![thumbnail_20240819_181829](https://github.com/user-attachments/assets/92bed838-2eed-449c-9edc-e1e035030dca)
 
 
+- Screen recordings demonstrating access to the HTML page via Wi-Fi and OpenVPN.
 
 https://github.com/user-attachments/assets/7ccdfa5c-cbc2-41a3-b265-a1c2b3188837
 
-
-
 https://github.com/user-attachments/assets/81bbeb51-18e5-4859-8695-73398094e4e8
+
+
+- Final Thoughts
+
+The project works well for real-time monitoring, giving me the temperature and humidity data I needed. The core functions are all in place and working fine.
+
+If I had more time, I’d focus on adding a dashboard and database to store the historical data. I’d also spend more time refining the website design to make it look and feel more "polished" and user-friendly.
+
+Overall, it’s a solid start, but there’s room for improvement in data storage and design.
 
