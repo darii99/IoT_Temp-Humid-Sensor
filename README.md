@@ -60,32 +60,53 @@ The DHT11 operates at 3.3V to 5V, and the Pico's VBUS (port 40) provides 5V, whi
 The chosen platform is Windows with Thonny IDE: Windows was selected due to personal familiarity and Thonny IDE because of its built-in support for MicroPython, which made the development for the Pico straightforward. The development was done with local installations on Windows and by using Thonny IDE, which allowed a direct interaction with the hardware. For scaling from local to production, one idea would be to start locally on Windows with Thonny IDE and later on transition to Linux systems for larger deployments.
 In terms of functionality, Thonny IDE on Windows supports coding, debugging and also uploading code to the Raspberry Pi Pico. The local setup also allows for immediate hardware interaction between the computer and the Pico.
 
+
+
 ## **The code**
 
 Core functions in the code:
 
 ### **main.py**  
-This module reads the temperature and humidity data from the DHT11 sensor and prints it to the console. It also includes error handling for potential issues with the sensor data.
+This library sets up the IoT system on the Raspberry Pi Pico to measure temperature and humidity using the DHT11 sensor, and serves the data through a local web server. Here are some code snippets:
 
-```
-from machine import Pin  
-import utime as time  
-from dht import DHT11, InvalidPulseCount, InvalidChecksum  
 
-while True:  
-    try:  
-        time.sleep(2)  
-        pin = Pin(27, Pin.OUT, Pin.PULL_DOWN)  
-        sensor = DHT11(pin)  
-        temperature = sensor.temperature  
-        humidity = sensor.humidity  
-        print("Temperature: {}".format(temperature))  
-        print("Humidity: {}".format(humidity))  
-    except InvalidPulseCount:  
-        print("Invalid Pulse Count")  
-    except InvalidChecksum:  
-        print("Invalid Checksum")
+Wi-Fi Connection (connects the device to a Wi-Fi network)
 ```
+def connect():
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    wlan.connect(ssid, password)
+    while not wlan.isconnected():
+        sleep(1)
+    return wlan.ifconfig()[0]
+```
+
+Sensor Data Reading (Reads temperature and humidity using the DHT11 sensor)
+```
+def getTempAndHumid():
+    pin = Pin(27, Pin.OUT, Pin.PULL_DOWN)
+    sensor = DHT11(pin)
+    return sensor.temperature, sensor.humidity
+```
+
+HTML Page Generation (dynamically generates a webpage displaying temperature and humidity)
+```
+def webpage(temperature, humidity):
+    html = """<html>Temperature: TEMP_PLACEHOLDER, Humidity: HUMID_PLACEHOLDER</html>"""
+    return html.replace("TEMP_PLACEHOLDER", str(temperature)).replace("HUMID_PLACEHOLDER", str(humidity))
+```
+
+Web Server (handles client requests, providing sensor data)
+```
+def serve(connection):
+    while True:
+        client = connection.accept()[0]
+        temp, humid = getTempAndHumid()
+        client.send(webpage(temp, humid))
+        client.close()
+```
+Moreover, the library includes a website functionality which generates the HTML page and uses JavaScript to change colors based on the values. The HTML template dynamically adjusts the text color to red or green depending on the temperature (≥25°C) or humidity (≥60%).
+
 The DHT11 sensor is initialised on GPIO pin 27, then the temperature and humidity is read every two seconds. The exceptions "InvalidPulseCount" and "InvalidChecksum" are caught and handled.        
 
 ### **dht.py**  
