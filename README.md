@@ -5,14 +5,14 @@ Name and student credentials: *Darina Larsen, dl222sg*
 
 
 ## **Overview**
-In this project I chose to make a temperature and humidity sensor using the MCU Raspberry Pico Pi WH and the temperature sensor DH11 by connecting them on a breadboard and then programming their behaviour with Micropython language on Thonny. The idea of the project is to also be able to see the output on a website by connecting the MCU wirelessly to WiFi.
+In this project I chose to make a temperature and humidity sensor using the MCU Raspberry Pico Pi WH and the temperature sensor DH11 by connecting them on a breadboard and then programming their behaviour with Micropython language on Thonny IDE. The idea of the project is to also be able to see the output on a website by connecting the MCU wirelessly to WiFi.
 
-The estimation of the time required to complete this project is approximately a week (taking research, setup, coding etc. into consideration)
+The estimation of the time required to complete this project is approximately three weeks (taking research, setup, coding etc. into consideration).
 
 
 ## **Objective**
 
-The reason I chose this project is because I will spend the majority of the summer working while leaving my pet at home alone, and I would like to be able to see the alterations in temperature and humidity in the apartment. I already have an AC and a fan that I can turn on and off through an app, and by seeing the data provided through this project, I can have a better understanding for when I should turn them on or off remotely. In this way I can avoid letting my pet either freeze or be warm by guessing what alternative is better.
+The reason I chose this project is because I will spend the majority of the summer working while leaving my pet at home alone, and I would like to be able to see the alterations in temperature and humidity in the apartment. I already have an AC and a fan that I can turn on and off through an app, and by seeing the data provided through this project, I can have a better understanding for when I should turn them on or off remotely. In this way I can avoid letting my pet either freeze or be warm by guessing which alternative is better.
 
 
 ## **Material**
@@ -57,7 +57,7 @@ The DHT11 operates at 3.3V to 5V, and the Pico's VBUS (port 40) provides 5V, whi
   
 ## **Platform**
 
-The chosen platform is Windows with Thonny IDE: Windows was selected due to personal familiarity and Thonny IDE because of its built-in support for MicroPython, which made the development for the Pico straightforward. The development was done with local installations on Windows and by using Thonny IDE, which allowed a direct interaction with the hardware. For scaling from local to production, one idea would be to start locally on Windows with Thonny IDE and later on transition to Linux systems for larger deployments.
+The chosen platform is Windows with Thonny IDE: Windows was selected due to personal familiarity and Thonny IDE because of its built-in support for MicroPython, which made the development for the Pico straightforward. The development was done with local installations on Windows and by using Thonny IDE, which allowed a direct interaction with the hardware. For scaling from local to production, one idea would be to start locally on Windows with Thonny IDE and later on transition to Linux systems for larger deployments (since Linux is preferred for larger deployments due to its stability, extensive development tools and strong remote management capabilities).
 In terms of functionality, Thonny IDE on Windows supports coding, debugging and also uploading code to the Raspberry Pi Pico. The local setup also allows for immediate hardware interaction between the computer and the Pico.
 
 
