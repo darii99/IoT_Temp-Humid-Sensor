@@ -52,7 +52,7 @@ The connection of the electronics are as shown in the picture:
 
 ![image](https://github.com/darii99/IoT_Temp-Humid-Sensor/assets/85901578/41c8ccfe-7137-4c0b-bbcc-30c507be153a)
 
-The DHT11 operates at 3.3V to 5V, and the Pico's VBUS (port 40) provides 5V, which is suitable for powering the sensor. Optionally, a 5kΩ pull-up resistor can be added between the sensor's signal pin and VCC for stability (according to DHT11's datasheet). This setup is ideal for development. However, if for production, soldering sonnections to a PCB should be considered for durability.
+The DHT11 operates at 3.3V to 5V, and the Pico's VBUS (port 40) provides 5V, which is suitable for powering the sensor. Optionally, a 5kΩ pull-up resistor can be added between the sensor's signal pin and VCC for stability (according to DHT11's datasheet), but I skipped it since I saw it worked well without it too. This setup is ideal for development. However, if for production, soldering connections to a PCB should be considered for durability.
 
   
 ## **Platform**
@@ -73,20 +73,20 @@ This library sets up the IoT system on the Raspberry Pi Pico to measure temperat
 Wi-Fi Connection (connects the device to a Wi-Fi network)
 ```
 def connect():
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    wlan.connect(ssid, password)
-    while not wlan.isconnected():
-        sleep(1)
-    return wlan.ifconfig()[0]
+    wlan = network.WLAN(network.STA_IF)      # Creates WLAN object in station mode
+    wlan.active(True)                        # Activates WLAN interface
+    wlan.connect(ssid, password)             # Connects to Wi-Fi w credentials
+    while not wlan.isconnected():            # Wait until device is connected to the network
+        sleep(1)                             # Sleep 1s between checks
+    return wlan.ifconfig()[0]                # Return device's IP address once connected
 ```
 
 Sensor Data Reading (Reads temperature and humidity using the DHT11 sensor)
 ```
 def getTempAndHumid():
-    pin = Pin(27, Pin.OUT, Pin.PULL_DOWN)
-    sensor = DHT11(pin)
-    return sensor.temperature, sensor.humidity
+    pin = Pin(27, Pin.OUT, Pin.PULL_DOWN)            # Init pin 27 as /O w pull-down resistor
+    sensor = DHT11(pin)                              # Creates DHT11 sensor object w pin
+    return sensor.temperature, sensor.humidity       # Returns temp and humid readings
 ```
 
 HTML Page Generation (dynamically generates a webpage displaying temperature and humidity)
@@ -100,10 +100,10 @@ Web Server (handles client requests, providing sensor data)
 ```
 def serve(connection):
     while True:
-        client = connection.accept()[0]
-        temp, humid = getTempAndHumid()
-        client.send(webpage(temp, humid))
-        client.close()
+        client = connection.accept()[0]         # Accept a client connection
+        temp, humid = getTempAndHumid()         # Get temperature and humidity data
+        client.send(webpage(temp, humid))       # Send the generated webpage to client
+        client.close()                          # Close the client connection
 ```
 Moreover, the library includes a website functionality which generates the HTML page and uses JavaScript to change colors based on the values. The HTML template dynamically adjusts the text color to red or green depending on the temperature (≥25°C) or humidity (≥60%).
 
@@ -127,7 +127,6 @@ Here is a code snippet of the HTML body:
 The DHT11 sensor is initialised on GPIO pin 27, then the temperature and humidity is read every two seconds. The exceptions "InvalidPulseCount" and "InvalidChecksum" are caught and handled.        
 
 ### **dht.py**  
-The dht.py library contains the DHT11 driver code. It handles the sensor initialisation, data reading and checksum verification. It reads temperature and humidity from the DHT11 using pulse counting and data conversion.
 
 
 The core functionalities here are:
@@ -146,10 +145,10 @@ Code snippet of the initialisation:
 ```
 class DHT11:
     def __init__(self, pin):
-        self._pin = pin
-        self._last_measure = utime.ticks_us()
-        self._temperature = -1
-        self._humidity = -1
+        self._pin = pin                          # Store pin connected to DHT11
+        self._last_measure = utime.ticks_us()    # Record last time a measurm was taken in ms
+        self._temperature = -1                   # Init temp value
+        self._humidity = -1                      # Init humid value
 ```
 
 
@@ -159,11 +158,11 @@ This part prepares the sensor for data transmission. After the pin is set as out
 
 ```
 def _send_init_signal(self):
-    self._pin.init(Pin.OUT, Pin.PULL_DOWN)            # Sets pin as output with pull-down resistor enabled
+    self._pin.init(Pin.OUT, Pin.PULL_DOWN)            # Sets pin O/ with pull-down resistor
     self._pin.value(1)                                
-    utime.sleep_ms(50)                                # Sends a high signal for 50ms to initialise the sensor, required according to datasheet
+    utime.sleep_ms(50)                                # Sends Hi-Sig for 50ms to init sensor
     self._pin.value(0)
-    utime.sleep_ms(18)                                # Pulls the pin low for 18ms to signal the start of data transmission, required according to datasheet
+    utime.sleep_ms(18)                                # Pulls pin low for 18ms to signal start of data transmission
 ```
 
 
@@ -174,11 +173,11 @@ Here the DHT11 sensor is measuring the temperature and humidity and updating the
 ```
 def measure(self):
     if utime.ticks_diff(utime.ticks_us(), self._last_measure) < MIN_INTERVAL_US:
-        return
-    self._send_init_signal()
-    pulses = self._capture_pulses()
-    buffer = self._convert_pulses_to_buffer(pulses)
-    self._verify_checksum(buffer)
+        return                                                    # Return early if the min interval between measurements hasn't elapsed
+    self._send_init_signal()                                      # Send init signal to DHT11
+    pulses = self._capture_pulses()                               # Capture pulses from DHT11
+    buffer = self._convert_pulses_to_buffer(pulses)               # Convert pulses -> data buffer
+    self._verify_checksum(buffer)                                 # Verify checksum for data integrity
 ```  
 
 
@@ -187,10 +186,9 @@ def measure(self):
 The purpose of this function is to capture the timing of the pulses sent by the sensor. It records the time between the signal transitions (low to high and hight to low). It returns the recorded pulse timings, and if the number of pulses is incorrect, it raises an error.
 ```
 def _capture_pulses(self):
-    pin = self._pin
-    transitions = bytearray(EXPECTED_PULSES)
-    # Captures transitions and timestamps
-    return transitions[4:]
+    pin = self._pin                               # Access the pin object connected to DHT11 
+    transitions = bytearray(EXPECTED_PULSES)      # Prepare byte array for pulse data
+    return transitions[4:]                        # Return data after initial bytes
 ```
 
 
@@ -200,7 +198,9 @@ This is a function that converts the captured pulse timings into a data buffer (
 
 ```
 def _convert_pulses_to_buffer(self, pulses):
+    # Convert pulse lengths to a binary value
     binary = sum(1 << (len(pulses)-1-idx) for idx, p in enumerate(pulses[::2]) if p > HIGH_LEVEL)
+    # Convert binary value to a byte array
     return array.array("B", [(binary >> (i * 8)) & 0xFF for i in range(4, -1, -1)])
 ```  
 
@@ -211,8 +211,8 @@ The purpose of this function is to ensure the data integrity by verifying the ch
 
 ```
 def _verify_checksum(self, buffer):
-    if sum(buffer[0:4]) & 0xFF != buffer[4]:
-        raise InvalidChecksum()
+    if sum(buffer[0:4]) & 0xFF != buffer[4]:      # Check if the sum of the first 4 bytes matches the last byt
+        raise InvalidChecksum()                   # Raise an exception if the checksum is invalid
 ```
 
 
